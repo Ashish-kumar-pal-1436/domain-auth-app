@@ -111,11 +111,23 @@ export default function DashboardScreen() {
         );
         setLoading(false);
       },
+
       (err) => {
-        console.error("Firestore read error:", err);
-        setError("Unable to load tasks. Check your connection and Firestore rules.");
-        setLoading(false);
-      }
+  console.error("Firestore read error:", {
+    code: err.code,
+    message: err.message,
+    uid: user.uid,
+    email: user.email,
+    emailVerified: user.emailVerified,
+  });
+
+  setError(
+    `Unable to load tasks (${err.code}). Check your account permissions.`
+  );
+
+  setLoading(false);
+}
+
     );
 
     return unsubscribe;

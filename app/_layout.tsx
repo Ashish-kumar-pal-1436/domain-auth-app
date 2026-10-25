@@ -1,24 +1,38 @@
+
 import { useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { AuthProvider, useAuth } from "../src/auth/AuthProvider";
 
 function AppNavigation() {
-  const { user, loading } = useAuth();
+  const { user, role, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+
+  const currentRoute = segments[0] as string | undefined;
 
   useEffect(() => {
     if (loading) return;
 
-    const onDashboard = segments[0] === "dashboard";
+    const onDashboard = currentRoute === "dashboard";
+    const onAdmin = currentRoute === "admin";
 
-    if (user && !onDashboard) {
-      router.replace("/dashboard");
-    } else if (!user && onDashboard) {
-      router.replace("/");
+    if (!user) {
+      if (onDashboard || onAdmin) {
+        router.replace("/");
+      }
+      return;
     }
-  }, [user, loading, segments, router]);
+
+    if (onAdmin && role !== "admin") {
+      router.replace("/dashboard");
+      return;
+    }
+
+    if (currentRoute === undefined) {
+      router.replace("/dashboard");
+    }
+  }, [user, role, loading, currentRoute, router]);
 
   if (loading) {
     return (
@@ -44,6 +58,7 @@ function AppNavigation() {
     >
       <Stack.Screen name="index" />
       <Stack.Screen name="dashboard" />
+      <Stack.Screen name="admin" />
     </Stack>
   );
 }

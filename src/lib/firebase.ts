@@ -1,4 +1,3 @@
-
 import { initializeApp, getApp, getApps } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
@@ -17,13 +16,18 @@ const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
-export const ALLOWED_DOMAIN = (
-  process.env.EXPO_PUBLIC_ALLOWED_DOMAIN || "hbplus.fit"
-)
-  .trim()
-  .toLowerCase();
+// This assignment only permits the official hbplus.fit domain.
+export const ALLOWED_DOMAIN = "hbplus.fit";
 
-export function isAllowedEmail(email: string | null | undefined) {
+export function isAllowedEmail(email: string | null | undefined): boolean {
   if (!email) return false;
-  return email.trim().toLowerCase().endsWith(`@${ALLOWED_DOMAIN}`);
+
+  const normalizedEmail = email.trim().toLowerCase();
+  const parts = normalizedEmail.split("@");
+
+  return (
+    parts.length === 2 &&
+    parts[0].length > 0 &&
+    parts[1] === ALLOWED_DOMAIN
+  );
 }

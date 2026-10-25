@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -6,6 +7,16 @@ service cloud.firestore {
     function isAuthorizedUser(userId) {
       return request.auth != null
         && request.auth.uid == userId
+        && request.auth.token.email_verified == true
+        && request.auth.token.email is string
+        && request.auth.token.email.lower().matches(
+          '^[a-z0-9._%+-]+@hbplus[.]fit$'
+        );
+    }
+
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.admin == true
         && request.auth.token.email_verified == true
         && request.auth.token.email is string
         && request.auth.token.email.lower().matches(
@@ -42,7 +53,7 @@ service cloud.firestore {
     }
 
     match /users/{userId}/tasks/{taskId} {
-      allow read: if isAuthorizedUser(userId);
+      allow read: if isAuthorizedUser(userId) || isAdmin();
 
       allow create: if isAuthorizedUser(userId)
         && validTask();

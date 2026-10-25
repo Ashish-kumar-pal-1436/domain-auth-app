@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Platform,
   Pressable,
   StyleSheet,
@@ -17,6 +16,7 @@ export default function LoginScreen() {
     useAuth();
 
   const [busy, setBusy] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
 
   const [request, response, promptAsync] = Google.useAuthRequest({
     webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
@@ -26,34 +26,54 @@ export default function LoginScreen() {
   });
 
   useEffect(() => {
-    if (Platform.OS === "web" || response?.type !== "success") return;
+    if (Platform.OS === "web" || !response) return;
+
+    if (response.type === "cancel") {
+      setBusy(false);
+      return;
+    }
+
+    if (response.type === "error") {
+      setLocalError(
+        response.error?.message || "Google sign-in failed. Please try again."
+      );
+      setBusy(false);
+      return;
+    }
+
+    if (response.type !== "success") {
+      setBusy(false);
+      return;
+    }
 
     const idToken =
       response.params?.id_token || response.authentication?.idToken;
 
     if (!idToken) {
-      Alert.alert(
-        "Sign-in failed",
-        "Google did not return an ID token. Please try again."
+      setLocalError(
+        "Google did not return an ID token. Please check your OAuth configuration and try again."
       );
       setBusy(false);
       return;
     }
 
     loginWithGoogleToken(idToken)
-      .catch(() => {})
+      .catch(() => {
+        // AuthProvider supplies the authentication error.
+      })
       .finally(() => setBusy(false));
   }, [response, loginWithGoogleToken]);
 
   const handleGoogleSignIn = async () => {
     clearError();
+    setLocalError(null);
     setBusy(true);
 
     if (Platform.OS === "web") {
       try {
         await loginWithGoogleWeb();
       } catch {
-        // The authentication provider supplies the error message.
+        // AuthProvider supplies the authentication error.
       } finally {
         setBusy(false);
       }
@@ -65,9 +85,8 @@ export default function LoginScreen() {
       !process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID &&
       !process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID
     ) {
-      Alert.alert(
-        "Setup required",
-        "Add the Android or iOS Google OAuth client ID to .env.local before signing in on a mobile device."
+      setLocalError(
+        "Setup required: add the Google OAuth client ID for your mobile platform to .env.local."
       );
       setBusy(false);
       return;
@@ -75,11 +94,14 @@ export default function LoginScreen() {
 
     try {
       await promptAsync();
+      // The response effect handles success, cancellation and errors.
     } catch {
-      Alert.alert("Sign-in failed", "Please try again.");
+      setLocalError("Google sign-in failed. Please try again.");
       setBusy(false);
     }
   };
+
+  const displayedError = localError || error;
 
   return (
     <View style={styles.page}>
@@ -115,9 +137,9 @@ export default function LoginScreen() {
             )}
           </Pressable>
 
-          {error ? (
+          {displayedError ? (
             <Text accessibilityRole="alert" style={styles.error}>
-              {error}
+              {displayedError}
             </Text>
           ) : null}
 
